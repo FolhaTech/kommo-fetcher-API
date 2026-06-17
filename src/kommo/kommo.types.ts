@@ -129,6 +129,6 @@ export interface KommoPaginatedResponse<T> {
   _embedded?: {
     contacts?: T[] | null;
     files?: T[] | null;
-    [key: string]: T[] | null;
+    [key: string]: T[] | null | undefined;
   } | null;
 }
