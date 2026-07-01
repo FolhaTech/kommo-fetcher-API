@@ -67,7 +67,7 @@ export class KommoService {
     await this.throttle();
 
     const fullUrl = this.resolveUrl(url);
-    const headers = await this.buildJsonHeaders();
+    const headers = this.buildJsonHeaders();
 
     try {
       this.logger.debug(

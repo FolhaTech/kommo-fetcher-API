@@ -1,32 +1,35 @@
-import js from '@eslint/js';
+// @ts-check
+import eslint from '@eslint/js';
+import eslintPluginPrettierRecommended from 'eslint-plugin-prettier/recommended';
 import globals from 'globals';
 import tseslint from 'typescript-eslint';
-import eslintPluginPrettier from 'eslint-plugin-prettier';
-import eslintConfigPrettier from 'eslint-config-prettier';
 
-export default [
+export default tseslint.config(
   {
-    ignores: ['dist', 'node_modules'],
+    ignores: ['eslint.config.mjs'],
   },
-  js.configs.recommended,
-  ...tseslint.configs.recommended,
-  eslintConfigPrettier,
+  eslint.configs.recommended,
+  ...tseslint.configs.recommendedTypeChecked,
+  eslintPluginPrettierRecommended,
   {
-    files: ['**/*.ts'],
     languageOptions: {
-      parser: tseslint.parser,
-      parserOptions: {
-        project: true,
-      },
       globals: {
         ...globals.node,
+        ...globals.jest,
+      },
+      sourceType: 'commonjs',
+      parserOptions: {
+        projectService: true,
+        tsconfigRootDir: import.meta.dirname,
       },
     },
-    plugins: {
-      prettier: eslintPluginPrettier,
-    },
+  },
+  {
     rules: {
-      'prettier/prettier': 'error',
+      '@typescript-eslint/no-explicit-any': 'off',
+      '@typescript-eslint/no-floating-promises': 'warn',
+      '@typescript-eslint/no-unsafe-argument': 'warn',
+      'prettier/prettier': ['error', { endOfLine: 'auto' }],
     },
   },
-];
+);

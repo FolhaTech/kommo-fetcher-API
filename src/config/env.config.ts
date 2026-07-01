@@ -15,11 +15,7 @@ export interface EnvConfig {
 }
 
 export function loadEnvConfig(): EnvConfig {
-  const requiredVars = [
-    'KOMMO_ACCESS_TOKEN',
-    'SUPABASE_URL',
-    'SUPABASE_ANON_KEY',
-  ];
+  const requiredVars = ['KOMMO_ACCESS_TOKEN', 'DB_CONNECTION', 'DB_KEY'];
 
   const missingVars = requiredVars.filter((v) => !process.env[v]);
   if (missingVars.length > 0) {
@@ -31,7 +27,7 @@ export function loadEnvConfig(): EnvConfig {
   return {
     kommo: {
       baseUrl: process.env.KOMMO_BASE_URL ?? 'https://genterrh.kommo.com',
-      accessToken: process.env.KOMMO_ACCESS_TOKEN!,
+      accessToken: process.env.KOMMO_ACCESS_TOKEN,
       driveUrl: process.env.KOMMO_DRIVE_URL ?? 'https://drive-c.kommo.com',
     },
     app: {
@@ -42,8 +38,8 @@ export function loadEnvConfig(): EnvConfig {
         | 'test',
     },
     db: {
-      baseUrl: process.env.SUPABASE_URL!,
-      accessToken: process.env.SUPABASE_ANON_KEY!,
+      baseUrl: process.env.DB_CONNECTION,
+      accessToken: process.env.DB_KEY,
     },
   };
 }
