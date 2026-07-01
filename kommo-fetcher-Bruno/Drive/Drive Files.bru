@@ -1,0 +1,26 @@
+meta {
+  name: Drive Files
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{drive_files_url}}/files
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{kommo_token}}
+}
+
+headers {
+  User-Agent: insomnia/12.6.0
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+}

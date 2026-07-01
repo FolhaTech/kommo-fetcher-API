@@ -1,0 +1,26 @@
+meta {
+  name: Leads by Pipeline
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{base_url}}/api/v4/leads?filter[pipeline_id]=13538803
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{kommo_token}}
+}
+
+headers {
+  User-Agent: insomnia/12.6.0
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+}

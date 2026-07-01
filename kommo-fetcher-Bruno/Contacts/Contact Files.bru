@@ -1,0 +1,26 @@
+meta {
+  name: Contact Files
+  type: http
+  seq: 4
+}
+
+get {
+  url: {{base_url}}/api/v4/contacts/109307116/files
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{kommo_token}}
+}
+
+headers {
+  User-Agent: insomnia/12.6.0
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+}
