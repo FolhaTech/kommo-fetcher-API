@@ -1,0 +1,27 @@
+﻿meta {
+  name: Files
+  type: http
+  seq: 1
+}
+
+get {
+  url: https://api-g.kommo.com/api/v4/accounts/570487998/files
+  body: none
+  auth: bearer
+}
+
+params:query {
+  ~"Authorization:": Bearer{{{kommo_token}}}
+}
+
+headers {
+  User-Agent: insomnia/12.6.0
+}
+
+auth:bearer {
+  token: {{kommo_token_drive}}
+}
+
+settings {
+  encodeUrl: true
+}

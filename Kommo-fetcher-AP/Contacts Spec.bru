@@ -1,0 +1,23 @@
+﻿meta {
+  name: Contacts Spec
+  type: http
+  seq: 8
+}
+
+get {
+  url: https://genterrh.kommo.com/api/v4/contacts/109307116
+  body: none
+  auth: bearer
+}
+
+headers {
+  User-Agent: insomnia/12.6.0
+}
+
+auth:bearer {
+  token: {{kommo_token}}
+}
+
+settings {
+  encodeUrl: true
+}

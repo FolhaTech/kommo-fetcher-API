@@ -54,3 +54,7 @@ pids
 
 # Diagnostic reports (https://nodejs.org/api/report.html)
 report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
+
+# Bruno collection - local environments may contain real tokens
+/Kommo-fetcher-AP/environments/*.bru
+!/Kommo-fetcher-AP/environments/*.example.bru

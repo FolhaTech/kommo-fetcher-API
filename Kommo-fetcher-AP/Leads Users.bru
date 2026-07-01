@@ -1,0 +1,23 @@
+﻿meta {
+  name: Leads Users
+  type: http
+  seq: 5
+}
+
+get {
+  url: https://genterrh.kommo.com/api/v4/leads/75302736/notes
+  body: none
+  auth: bearer
+}
+
+headers {
+  User-Agent: insomnia/12.6.0
+}
+
+auth:bearer {
+  token: {{kommo_token}}
+}
+
+settings {
+  encodeUrl: true
+}

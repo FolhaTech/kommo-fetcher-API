@@ -1,0 +1,27 @@
+﻿meta {
+  name: Drive Url
+  type: http
+  seq: 13
+}
+
+get {
+  url: https://drive-g.kommo.com/v1.0/files
+  body: none
+  auth: bearer
+}
+
+params:query {
+  ~"Authorization:": Bearer{{{kommo_token}}}
+}
+
+headers {
+  User-Agent: insomnia/12.6.0
+}
+
+auth:bearer {
+  token: {{kommo_token_drive}}
+}
+
+settings {
+  encodeUrl: true
+}
