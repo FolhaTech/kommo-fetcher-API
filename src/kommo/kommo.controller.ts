@@ -1,14 +1,7 @@
-import {
-  BadRequestException,
-  Controller,
-  Get,
-  Param,
-  Query,
-  Res,
-  StreamableFile,
-} from '@nestjs/common';
+import { BadRequestException, Controller, Get, Param, Query, Res, StreamableFile, } from '@nestjs/common';
 import { KommoService } from './kommo.service';
 import type { Response } from 'express';
+import { KommoFile, KommoLeadWithFiles } from './kommo.types';
 
 @Controller('kommo')
 export class KommoController {
@@ -73,5 +66,60 @@ export class KommoController {
     res.setHeader('Content-Length', buffer.length.toString());
 
     return new StreamableFile(buffer);
+  }
+
+  @Get('leads')
+  async getLeads(
+    @Query('pipeline_id') pipelineId?: string,
+    @Query('page') page?: string,
+  ) {
+    if (!pipelineId) {
+      throw new BadRequestException('pipeline_id is required');
+    }
+
+    const numPage = page ? Number.parseInt(page, 10) : 1;
+    return this.kommoService.getLeadsByPipeline(Number(pipelineId), numPage);
+  }
+
+  @Get('leads/with-drive-files')
+  async getLeadsWithDriveFiles(@Query('pipeline_id') pipelineId?: string) {
+    if (!pipelineId) {
+      throw new BadRequestException('pipeline_id is required');
+    }
+
+    const results: KommoLeadWithFiles[] = [];
+    for await (const batch of this.kommoService.getLeadsWithDriveFilesPaginated(
+      Number(pipelineId),
+    )) {
+      results.push(...batch);
+    }
+    return { count: results.length, leads: results };
+  }
+
+  @Get('drive/files')
+  async getDriveFiles(
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+  ) {
+    const numPage = page ? Number.parseInt(page, 10) : 1;
+    const numLimit = limit ? Number.parseInt(limit, 10) : 250;
+    return this.kommoService.getDriveFiles(numPage, numLimit);
+  }
+
+  @Get('drive/files/filter')
+  async getDriveFilesByExtension(@Query('ext') ext?: string | string[]) {
+    if (!ext) {
+      throw new BadRequestException('extension is required');
+    }
+
+    const extensions = Array.isArray(ext) ? ext : [ext];
+
+    const batches: KommoFile[][] = [];
+    for await (const batch of this.kommoService.getDriveFilesExtensionPaginated(
+      extensions,
+    )) {
+      batches.push(batch);
+    }
+    return { extensions, batches };
   }
 }

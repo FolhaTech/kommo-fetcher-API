@@ -1,35 +1,8 @@
 export interface KommoAccount {
-  id: number;
-  name: string;
-  subdomain: string;
-  language: string;
-  created_at: number;
-  created_by: number;
-  updated_at: number;
-  updated_by: number;
-  current_user_id: number;
-  country: string;
-  currency: string;
-  currency_symbol: string;
-  customers_mode: string;
-  is_unsorted_on: boolean;
-  mobile_feature_version: number;
-  is_loss_reason_enabled: boolean;
-  is_helpbot_enabled: boolean;
-  is_technical_account: boolean;
-  contact_name_display_order: boolean;
-  _links: {
-    self: {
-      href: string;
-    };
-  };
-  drive_url: string | null;
-}
-
-export interface KommoTag {
-  id: number;
-  name: string;
-  color?: string | null;
+  id?: number;
+  name?: string;
+  drive_url?: string;
+  [key: string]: unknown;
 }
 
 export interface KommoLink {
@@ -37,8 +10,14 @@ export interface KommoLink {
 }
 
 export interface KommoLinks {
-  self?: KommoLink | null;
-  next?: KommoLink | null;
+  self?: KommoLink;
+  next?: KommoLink;
+}
+
+export interface KommoTag {
+  id: number;
+  name: string;
+  color?: string | null;
 }
 
 export interface KommoContact {
@@ -56,55 +35,27 @@ export interface KommoContact {
   is_deleted?: boolean | null;
   is_unmerged?: boolean | null;
   account_id?: number | null;
-  custom_fields_values?: KommoCustomFieldValue[] | null;
+  custom_fields_values?: unknown[] | null;
   _embedded?: Record<string, unknown> | null;
   _links?: KommoLinks | null;
   tags?: KommoTag[] | null;
 }
 
-export interface KommoCustomFieldValue {
-  field_id?: number | null;
-  field_name?: string | null;
-  field_code?: string | null;
-  field_type?: string | null;
-  values?: KommoCustomFieldValueItem[] | null;
-}
-
-export interface KommoCustomFieldValueItem {
-  value?: string | number | boolean | null;
-  enum_id?: number | null;
-  enum_code?: string | null;
-}
-
-export interface KommoEmbedded {
-  contacts?: KommoContact[] | null;
-  tags?: KommoTag[] | null;
-  companies?: KommoCompany[] | null;
-}
-
-export interface KommoCompany {
-  id?: number | null;
-  name?: string | null;
-  responsible_user_id?: number | null;
-  created_at?: number | null;
-  updated_at?: number | null;
+export interface KommoPaginatedResponse<T> {
+  _page?: number;
+  _links?: KommoLinks;
+  _embedded?: Record<string, T[] | undefined>;
 }
 
 export interface KommoFileMeta {
-  extension: string;
-  mime_type: string;
+  extension?: string | null;
+  mime_type?: string | null;
 }
 
 export interface KommoFileLinks {
-  download: {
-    href: string;
-  };
-  download_version: {
-    href: string;
-  };
-  self?: {
-    href: string;
-  };
+  download?: KommoLink;
+  download_version?: KommoLink;
+  self?: KommoLink;
 }
 
 export interface KommoFile {
@@ -112,23 +63,69 @@ export interface KommoFile {
   uuid?: string | null;
   id?: number | null;
   name?: string | null;
+  sanitized_name?: string | null;
   size?: number | null;
   type?: string | null;
+  is_trashed?: boolean | null;
+  has_multiple_versions?: boolean | null;
   metadata?: KommoFileMeta | null;
   _links?: KommoFileLinks | null;
   created_at?: number | null;
-  created_by?: {
-    type: string;
-    id: number;
-  } | null;
+  updated_at?: number | null;
+  created_by?: { type: string; id: number } | null;
+  updated_by?: { type: string; id: number } | null;
+  source_id?: number | null;
+  previews?: unknown[] | null;
 }
 
-export interface KommoPaginatedResponse<T> {
-  _page?: number | null;
-  _links?: KommoLinks | null;
+export interface KommoLeadEmbedded {
+  tags?: KommoTag[];
+  companies?: unknown[];
+  contacts?: KommoContact;
+}
+
+export interface KommoLead {
+  id: number;
+  name: string;
+  price?: number;
+  responsible_user_id?: number;
+  group_id?: number;
+  status_id?: number;
+  pipeline_id?: number;
+  loss_reason_id?: number | null;
+  created_by?: number;
+  updated_by?: number;
+  created_at?: number;
+  updated_at?: number;
+  closed_at?: number | null;
+  closest_task_at?: number | null;
+  is_deleted?: boolean;
+  custom_fields_values?: unknown[] | null;
+  score?: number | null;
+  account_id?: number;
+  labor_cost?: number | null;
+  _embedded?: KommoLeadEmbedded;
+  _links?: KommoLinks;
+}
+
+export interface KommoPaginatedLeads {
+  _page?: number;
+  _links: KommoLinks;
+  _embedded: {
+    leads: KommoLead[];
+  };
+}
+
+export interface KommoDriveFilesResponse {
+  _count?: number;
+  _page?: number;
+  _links?: KommoLinks;
   _embedded?: {
-    contacts?: T[] | null;
-    files?: T[] | null;
-    [key: string]: T[] | null | undefined;
-  } | null;
+    files: KommoFile[];
+  };
+}
+
+export interface KommoLeadWithFiles {
+  lead: KommoLead;
+  files: KommoFile[];
 }
