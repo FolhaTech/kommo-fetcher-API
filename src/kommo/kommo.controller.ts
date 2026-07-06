@@ -1,4 +1,12 @@
-import { BadRequestException, Controller, Get, Param, Query, Res, StreamableFile, } from '@nestjs/common';
+import {
+  BadRequestException,
+  Controller,
+  Get,
+  Param,
+  Query,
+  Res,
+  StreamableFile,
+} from '@nestjs/common';
 import { KommoService } from './kommo.service';
 import type { Response } from 'express';
 import { KommoFile, KommoLeadWithFiles } from './kommo.types';

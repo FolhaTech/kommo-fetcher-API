@@ -1,98 +1,103 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
+# kommo-fetcher
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+Serviço NestJS 11 que consome a API do CRM Kommo para buscar contatos, leads,
+arquivos do drive e fazer download. A persistência no Supabase está planejada
+mas ainda não implementada.
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+## Pré-requisitos
 
-## Description
+- Node.js 22
+- npm
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
-
-## Project setup
+## Configuração
 
 ```bash
-$ npm install
+npm install
+cp .env.example .env
+# Preencha KOMMO_ACCESS_TOKEN no .env com um token válido do Kommo
 ```
 
-## Compile and run the project
+### Variáveis de ambiente
+
+| Variável            | Obrigatória | Padrão                           |
+| ------------------- | ----------- | -------------------------------- |
+| `KOMMO_ACCESS_TOKEN` | Sim         | —                                |
+| `DB_CONNECTION`      | Sim         | —                                |
+| `DB_KEY`             | Sim         | —                                |
+| `KOMMO_BASE_URL`     | Não         | `https://genterrh.kommo.com`      |
+| `KOMMO_DRIVE_URL`    | Não         | `https://drive-c.kommo.com`       |
+| `PORT`               | Não         | `3000`                           |
+| `NODE_ENV`           | Não         | `development`                    |
+
+## Comandos
 
 ```bash
-# development
-$ npm run start
+npm run start:dev   # desenvolvimento com hot reload
+npm run start:debug # com debugger ativo
+npm run build       # compila para dist/
+npm run start:prod  # produção (node dist/main)
 
-# watch mode
-$ npm run start:dev
+npm test            # testes unitários
+npm run test:watch  # testes em watch mode
+npm run test:cov    # cobertura de testes
+npm run test:e2e    # testes end-to-end
 
-# production mode
-$ npm run start:prod
+npm run lint        # ESLint
+npm run lint:fix    # ESLint com auto-fix
+npm run format      # Prettier --write
+npm run build       # compilação de produção
 ```
 
-## Run tests
+## Endpoints da API
+
+Todos os endpoints usam o prefixo `/kommo`.
+
+| Rota                          | Descrição                                        |
+| ----------------------------- | ------------------------------------------------ |
+| `GET /kommo/drive-url`        | URL do drive da conta Kommo                      |
+| `GET /kommo/contacts`         | Contatos por tag (`?tag=` requerido, `&page=`)   |
+| `GET /kommo/contacts/stream`  | Todos os contatos paginados (`?tag=` requerido)  |
+| `GET /kommo/contacts/:id/files` | Arquivos de um contato                         |
+| `GET /kommo/leads`            | Leads por pipeline (`?pipeline_id=` requerido)   |
+| `GET /kommo/leads/with-drive-files` | Leads com arquivos do drive associados    |
+| `GET /kommo/drive/files`      | Arquivos do drive (`?page=&limit=`)             |
+| `GET /kommo/drive/files/filter` | Filtrar por extensão (`?ext=pdf&ext=docx`)   |
+| `GET /kommo/files/download`   | Download de arquivo (`?url=`)                   |
+
+## Estrutura
+
+```
+src/
+  main.ts                 # entrypoint da aplicação
+  app.module.ts           # módulo raiz (ConfigModule + KommoModule)
+  config/env.config.ts    # tipagem e validação de variáveis de ambiente
+  kommo/
+    kommo.service.ts      # cliente HTTP com throttle/retry + paginação
+    kommo.controller.ts   # endpoints REST (/kommo/*)
+    kommo.types.ts        # DTOs (KommoContact, KommoLead, KommoFile, ...)
+  db/                     # (planejado) persistência no Supabase
+  candidates/             # (planejado)
+  sync/                   # (planejado) orquestração de sincronização
+```
+
+## CI
+
+Push para `main`/`develop` e PRs disparam lint + format (ubuntu e windows)
+seguidos de build + testes unitários (ubuntu). Testes e2e não rodam na CI.
+
+Antes de commitar, verifique:
 
 ```bash
-# unit tests
-$ npm run test
-
-# e2e tests
-$ npm run test:e2e
-
-# test coverage
-$ npm run test:cov
+npm run lint && npm run format && npm run build && npm test
 ```
 
-## Deployment
+## Stack
 
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
+- [NestJS 11](https://nestjs.com) + Express
+- ESLint 10 (flat config) + Prettier 3
+- Jest (testes unitários) + Supertest (e2e)
+- TypeScript 5 (`nodenext`, target ES2023)
 
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
+## Licença
 
-```bash
-$ npm install -g @nestjs/mau
-$ mau deploy
-```
-
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
-
-## Resources
-
-Check out a few resources that may come in handy when working with NestJS:
-
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
-
-## Support
-
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
-
-## Stay in touch
-
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
-
-## License
-
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+UNLICENSED — uso interno.

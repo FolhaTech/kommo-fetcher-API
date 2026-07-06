@@ -384,13 +384,29 @@ export class KommoService {
     pipelineId: number,
   ): AsyncGenerator<KommoLeadWithFiles[]> {
     const leadsMap = new Map<number, KommoLead>();
+    const contactToLead = new Map<number, number>();
+
     for await (const leads of this.getAllLeadsByPipelinePaginated(pipelineId)) {
       for (const lead of leads) {
-        if (lead.id) leadsMap.set(lead.id, lead);
+        if (lead.id) {
+          leadsMap.set(lead.id, lead);
+
+          const embeddedContacts = lead._embedded?.contacts;
+          if (embeddedContacts) {
+            const contactsList = Array.isArray(embeddedContacts)
+              ? embeddedContacts
+              : [embeddedContacts];
+            for (const contact of contactsList) {
+              if (contact.id) {
+                contactToLead.set(contact.id, lead.id);
+              }
+            }
+          }
+        }
       }
     }
     this.logger.log(
-      `Mapeados ${leadsMap.size} leads do pipeline ${pipelineId}`,
+      `Mapeados ${leadsMap.size} leads e ${contactToLead.size} contatos do pipeline ${pipelineId}`,
     );
 
     const grouped = new Map<number, KommoFile[]>();
@@ -403,10 +419,17 @@ export class KommoService {
     }
     this.logger.log(`Arquivos agrupados em ${grouped.size} source_id(s)`);
 
-    // 3. YIELD  leads with files.
     const results: KommoLeadWithFiles[] = [];
     for (const [sourceId, files] of grouped.entries()) {
-      const lead = leadsMap.get(sourceId);
+      let lead = leadsMap.get(sourceId);
+
+      if (!lead) {
+        const leadId = contactToLead.get(sourceId);
+        if (leadId) {
+          lead = leadsMap.get(leadId);
+        }
+      }
+
       if (lead) {
         results.push({ lead, files });
       }
@@ -415,6 +438,12 @@ export class KommoService {
     if (results.length > 0) {
       this.logger.log(`${results.length} lead(s) com arquivo(s) vinculado(s)`);
       yield results;
+    } else {
+      this.logger.warn(
+        `Nenhum lead com arquivos encontrado. ` +
+          `Leads: ${leadsMap.size}, Contatos mapeados: ${contactToLead.size}, ` +
+          `Source IDs no Drive: ${[...grouped.keys()].join(', ')}`,
+      );
     }
   }
 

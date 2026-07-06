@@ -1,9 +1,10 @@
 # kommo-fetcher
 
 NestJS 11 service that pulls data from the Kommo CRM API and (eventually)
-persists it to Supabase. The repo is early scaffolding: several feature
-directories exist but are empty, and a few files look finished but are not
-wired into the app. Verify wiring before assuming something is live.
+persists it to Supabase. Early scaffolding: the Kommo module (service + controller
+with 9 REST routes) is fully wired, but DB/candidates/sync are empty stubs and
+env validation (`loadEnvConfig`) is dead code. Verify wiring before assuming
+something is live.
 
 ## Toolchain (non-default — easy to get wrong)
 
@@ -119,8 +120,12 @@ src/
     kommo.service.ts      # Throttled fetch with 5xx + network retry,
                           # Bearer auth via ConfigService, pagination
                           # generator. Registered in KommoModule.
-    kommo.module.ts       # providers:[KommoService], exports it. Wired
-                          # into AppModule.
+    kommo.controller.ts   # 9 REST endpoints at /kommo/*: contacts, leads,
+                          # drive files, download, pagination streams.
+                          # Registered in KommoModule — fully live.
+    kommo.controller.spec.ts # Tests for the controller endpoints.
+    kommo.module.ts       # providers:[KommoService], exports it, imports
+                          # KommoController. Wired into AppModule.
     kommo.types.ts        # DTOs (KommoAccount, KommoContact,
                           # KommoPaginatedResponse, KommoFile, ...).
   scripts/
@@ -177,3 +182,4 @@ Things that look real but are not yet connected:
   do not publish.
 - `package-lock.json` is committed; use `npm` (not `pnpm` / `yarn`).
 - CI runs on Node 22 (`actions/setup-node@v4`, `node-version: 22`).
+- README.md is the default NestJS scaffold boilerplate — skip it.
