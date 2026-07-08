@@ -12,10 +12,19 @@ export interface EnvConfig {
     port: number;
     nodeEnv: 'development' | 'production' | 'test';
   };
+  jwt: {
+    secret: string;
+    expiresIn: string;
+  };
 }
 
 export function loadEnvConfig(): EnvConfig {
-  const requiredVars = ['KOMMO_ACCESS_TOKEN', 'DB_CONNECTION', 'DB_KEY'];
+  const requiredVars = [
+    'KOMMO_ACCESS_TOKEN',
+    'DB_CONNECTION',
+    'DB_KEY',
+    'JWT_SECRET',
+  ];
 
   const missingVars = requiredVars.filter((v) => !process.env[v]);
   if (missingVars.length > 0) {
@@ -40,6 +49,10 @@ export function loadEnvConfig(): EnvConfig {
     db: {
       baseUrl: process.env.DB_CONNECTION,
       accessToken: process.env.DB_KEY,
+    },
+    jwt: {
+      secret: process.env.JWT_SECRET ?? 'secret',
+      expiresIn: process.env.JWT_EXPIRES_IN ?? '1h',
     },
   };
 }
