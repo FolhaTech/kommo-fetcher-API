@@ -3,13 +3,14 @@ import {
   Controller,
   Get,
   Param,
+  Post,
   Query,
   Res,
   StreamableFile,
 } from '@nestjs/common';
 import { KommoService } from './kommo.service';
 import type { Response } from 'express';
-import { KommoFile, KommoLeadWithFiles } from './kommo.types';
+import { CandidateResult, KommoFile, KommoLeadWithFiles } from './kommo.types';
 
 @Controller('kommo')
 export class KommoController {
@@ -129,5 +130,53 @@ export class KommoController {
       batches.push(batch);
     }
     return { extensions, batches };
+  }
+
+  @Post('candidates/sync')
+  async syncCandidates(): Promise<{
+    total: number;
+    candidates: CandidateResult[];
+  }> {
+    const candidates: CandidateResult[] = [];
+    for await (const batch of this.kommoService.getCandidatesWithCvsPaginated(
+      13538803,
+    )) {
+      candidates.push(...batch);
+    }
+    return { total: candidates.length, candidates };
+  }
+
+  @Get('files/:uuid/download')
+  async downloadByUuid(
+    @Param('uuid') uuid: string,
+    @Res({ passthrough: true }) res: Response,
+  ): Promise<StreamableFile> {
+    if (!uuid) {
+      throw new BadRequestException('uuid is required');
+    }
+
+    const { buffer, name, extension } =
+      await this.kommoService.downloadFileByUuid(uuid);
+
+    const mimeTypes: Record<string, string> = {
+      pdf: 'application/pdf',
+      doc: 'application/msword',
+      docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      jpg: 'image/jpeg',
+      jpeg: 'image/jpeg',
+      png: 'image/png',
+    };
+
+    const ext = (extension ?? 'pdf').toLowerCase();
+    const contentType = mimeTypes[ext] ?? 'application/octet-stream';
+
+    res.setHeader('Content-Type', contentType);
+    res.setHeader(
+      'Content-Disposition',
+      `attachment; filename="${name}.${ext}"`,
+    );
+    res.setHeader('Content-Length', buffer.length.toString());
+
+    return new StreamableFile(buffer);
   }
 }

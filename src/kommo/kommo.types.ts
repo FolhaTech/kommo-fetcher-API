@@ -129,3 +129,35 @@ export interface KommoLeadWithFiles {
   lead: KommoLead;
   files: KommoFile[];
 }
+
+export interface KommoLeadFile {
+  file_uuid: string;
+  id: number;
+}
+
+export interface KommoDriveFileMeta {
+  uuid: string;
+  name: string;
+  metadata?: {
+    extension?: string;
+  };
+  _links?: {
+    download?: {
+      href: string;
+    };
+  };
+}
+
+export interface CandidateResult {
+  leadId: number;
+  name: string;
+  statusId: number | null;
+  pipelineId: number | null;
+  contactIds: number[];
+  files: Array<{
+    uuid: string;
+    name: string;
+    extension: string | null;
+    downloadUrl: string;
+  }>;
+}

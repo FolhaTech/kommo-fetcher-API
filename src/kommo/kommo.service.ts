@@ -1,11 +1,14 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import {
+  CandidateResult,
   KommoAccount,
   KommoContact,
+  KommoDriveFileMeta,
   KommoDriveFilesResponse,
   KommoFile,
   KommoLead,
+  KommoLeadFile,
   KommoLeadWithFiles,
   KommoPaginatedLeads,
   KommoPaginatedResponse,
@@ -300,7 +303,6 @@ export class KommoService {
       const leads = response._embedded?.leads ?? [];
 
       if (leads.length === 0) {
-        hasMore = false;
         break;
       }
 
@@ -342,7 +344,6 @@ export class KommoService {
       const files = response._embedded?.files ?? [];
 
       if (files.length === 0) {
-        hasMore = false;
         break;
       }
 
@@ -384,83 +385,203 @@ export class KommoService {
     pipelineId: number,
   ): AsyncGenerator<KommoLeadWithFiles[]> {
     const leadsMap = new Map<number, KommoLead>();
-    const contactToLead = new Map<number, number>();
-
     for await (const leads of this.getAllLeadsByPipelinePaginated(pipelineId)) {
       for (const lead of leads) {
-        if (lead.id) {
-          leadsMap.set(lead.id, lead);
-
-          const embeddedContacts = lead._embedded?.contacts;
-          if (embeddedContacts) {
-            const contactsList = Array.isArray(embeddedContacts)
-              ? embeddedContacts
-              : [embeddedContacts];
-            for (const contact of contactsList) {
-              if (contact.id) {
-                contactToLead.set(contact.id, lead.id);
-              }
-            }
-          }
-        }
+        if (lead.id) leadsMap.set(lead.id, lead);
       }
     }
     this.logger.log(
-      `Mapeados ${leadsMap.size} leads e ${contactToLead.size} contatos do pipeline ${pipelineId}`,
+      `Mapeados ${leadsMap.size} leads do pipeline ${pipelineId}`,
     );
 
-    const grouped = new Map<number, KommoFile[]>();
+    const cvExtensions = ['pdf', 'doc', 'docx'];
+    const driveFiles: KommoFile[] = [];
     for await (const files of this.getAllDriveFilesPaginated()) {
       for (const file of files) {
-        if (!file.source_id) continue;
-        if (!grouped.has(file.source_id)) grouped.set(file.source_id, []);
-        grouped.get(file.source_id).push(file);
-      }
-    }
-    this.logger.log(`Arquivos agrupados em ${grouped.size} source_id(s)`);
-
-    const results: KommoLeadWithFiles[] = [];
-    for (const [sourceId, files] of grouped.entries()) {
-      let lead = leadsMap.get(sourceId);
-
-      if (!lead) {
-        const leadId = contactToLead.get(sourceId);
-        if (leadId) {
-          lead = leadsMap.get(leadId);
+        const ext = file.metadata?.extension?.toLowerCase();
+        if (ext && cvExtensions.includes(ext)) {
+          driveFiles.push(file);
         }
       }
+    }
+    this.logger.log(`Drive: ${driveFiles.length} CV(s) para verificar`);
 
-      if (lead) {
-        results.push({ lead, files });
+    const leadFiles = new Map<number, KommoFile[]>();
+
+    for (const file of driveFiles) {
+      const fileUuid = file.uuid ?? file.file_uuid;
+      if (!fileUuid) continue;
+
+      try {
+        const response = await this.request<{
+          file_uuid: string;
+          entities: { entity_type: string; entity_id: number }[];
+        }>(`/api/v4/files/${fileUuid}/links`);
+
+        if (!response?.entities) continue;
+
+        for (const entity of response.entities) {
+          if (
+            entity.entity_type === 'leads' &&
+            leadsMap.has(entity.entity_id)
+          ) {
+            const existing = leadFiles.get(entity.entity_id) ?? [];
+            leadFiles.set(entity.entity_id, [...existing, file]);
+            this.logger.log(
+              `[LINK] "${file.name}" → Lead ${entity.entity_id} (${leadsMap.get(entity.entity_id)?.name})`,
+            );
+            break;
+          }
+        }
+      } catch (err) {
+        this.logger.warn(
+          `Erro /files/${fileUuid}/links: ${(err as Error).message}`,
+        );
       }
     }
 
+    const results: KommoLeadWithFiles[] = [];
+    for (const [leadId, files] of leadFiles.entries()) {
+      const lead = leadsMap.get(leadId);
+      if (lead) results.push({ lead, files });
+    }
+
+    this.logger.log(
+      `${results.length}/${leadsMap.size} lead(s) com CV vinculado`,
+    );
+
     if (results.length > 0) {
-      this.logger.log(`${results.length} lead(s) com arquivo(s) vinculado(s)`);
       yield results;
-    } else {
-      this.logger.warn(
-        `Nenhum lead com arquivos encontrado. ` +
-          `Leads: ${leadsMap.size}, Contatos mapeados: ${contactToLead.size}, ` +
-          `Source IDs no Drive: ${[...grouped.keys()].join(', ')}`,
-      );
     }
   }
 
-  async downloadDriveFiles(
-    file: KommoFile,
-  ): Promise<{ file: KommoFile; buffer: Buffer }> {
-    const href = file._links?.download?.href;
+  async getLeadFiles(leadId: number): Promise<KommoLeadFile[]> {
+    const url = `/api/v4/leads/${leadId}/files`;
+    this.logger.debug(`Buscando arquivos do lead ${leadId}`);
 
-    if (!href) {
-      throw new Error(
-        `Arquivo ${file.name} (${file.uuid}) sem URL de download`,
-      );
+    const result = await this.request<{
+      _embedded?: { files: KommoLeadFile[] };
+    }>(url);
+    const files = result?._embedded?.files ?? [];
+
+    this.logger.debug(`Lead ${leadId}: ${files.length} arquivo(s).`);
+    return files;
+  }
+
+  async getDriveFileMeta(fileUuid: string): Promise<KommoDriveFileMeta | null> {
+    const url = `/v1.0/files/${fileUuid}`;
+    this.logger.debug(`Buscando meta do arquivo ${fileUuid}`);
+    return this.request<KommoDriveFileMeta>(url);
+  }
+
+  async *getCandidatesWithCvsPaginated(
+    pipelineId: number,
+  ): AsyncGenerator<CandidateResult[]> {
+    const cvExtensions = ['pdf', 'doc', 'docx'];
+    const totalFound: CandidateResult[] = [];
+
+    for await (const leads of this.getAllLeadsByPipelinePaginated(pipelineId, [
+      'contacts',
+    ])) {
+      const batch: CandidateResult[] = [];
+
+      for (const lead of leads) {
+        if (!lead.id) continue;
+
+        const leadFiles = await this.getLeadFiles(lead.id);
+        if (leadFiles.length === 0) continue;
+
+        const cvCandidates: Array<{
+          uuid: string;
+          name: string;
+          extension: string | null;
+          downloadUrl: string;
+        }> = [];
+
+        for (const lf of leadFiles) {
+          try {
+            const meta = await this.getDriveFileMeta(lf.file_uuid);
+            if (!meta) continue;
+
+            const ext = meta.metadata?.extension?.toLowerCase() ?? null;
+
+            if (!ext || !cvExtensions.includes(ext)) continue;
+
+            cvCandidates.push({
+              uuid: meta.uuid,
+              name: meta.name,
+              extension: ext,
+              downloadUrl: meta._links?.download?.href ?? '',
+            });
+          } catch (err) {
+            this.logger.warn(
+              `Arquivo ${lf.file_uuid} indisponível: ${(err as Error).message}`,
+            );
+          }
+        }
+
+        if (cvCandidates.length === 0) continue;
+
+        const rawContacts = lead._embedded?.contacts;
+        let contactIds: number[] = [];
+        if (rawContacts) {
+          const contactsList = Array.isArray(rawContacts)
+            ? rawContacts
+            : [rawContacts];
+          contactIds = contactsList
+            .map((c) => c.id)
+            .filter((id): id is number => id != null);
+        }
+
+        const candidate: CandidateResult = {
+          leadId: lead.id,
+          name: lead.name ?? '',
+          statusId: lead.status_id ?? null,
+          pipelineId: lead.pipeline_id ?? null,
+          contactIds,
+          files: cvCandidates,
+        };
+
+        batch.push(candidate);
+        totalFound.push(candidate);
+
+        this.logger.log(
+          `Candidato "${lead.name}" (lead ${lead.id}): ${cvCandidates.length} CV(s)`,
+        );
+      }
+
+      if (batch.length > 0) {
+        yield batch;
+      }
     }
 
-    const buffer = await this.downloadFile(href);
-    this.logger.log(`Download OK: ${file.name} (${file.uuid})`);
+    this.logger.log(
+      `Total de candidatos com CV encontrados: ${totalFound.length}`,
+    );
+  }
 
-    return { file, buffer };
+  async downloadFileByUuid(fileUuid: string): Promise<{
+    buffer: Buffer;
+    name: string;
+    extension: string | null;
+    size: number | null;
+  }> {
+    const meta = await this.getDriveFileMeta(fileUuid);
+    if (!meta) {
+      throw new Error(`Arquivo ${fileUuid} não encontrado no drive.`);
+    }
+
+    const downloadUrl = meta._links?.download?.href;
+    if (!downloadUrl) {
+      throw new Error(`Arquivo ${meta.name} (${fileUuid}) sem Url de download`);
+    }
+
+    const buffer = await this.downloadFile(downloadUrl);
+    return {
+      buffer,
+      name: meta.name ?? fileUuid,
+      extension: meta.metadata?.extension ?? null,
+      size: buffer.length,
+    };
   }
 }
