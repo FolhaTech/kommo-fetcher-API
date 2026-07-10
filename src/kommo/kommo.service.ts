@@ -45,10 +45,6 @@ export class KommoService {
     }
 
     this.logger.log(`Kommo Service initialize with baseUrl: ${this.baseUrl}`);
-
-    // this.logger.log(
-    //   `Kommo Service initialize with accessToken: ${this.accessToken}`,
-    // );
   }
 
   // Private Helpers
