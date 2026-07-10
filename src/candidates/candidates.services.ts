@@ -1,17 +1,42 @@
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import { Injectable, Logger } from '@nestjs/common';
 import { SupabaseService } from '../db/supabase.service';
 import { KommoService } from '../kommo/kommo.service';
 import { SyncResponse } from './candidates.type';
 import { CandidateResult } from '../kommo/kommo.types';
+import { Cron } from '@nestjs/schedule';
+import { ConfigService } from '@nestjs/config';
+import { EnvConfig } from '../config/env.config';
 
 @Injectable()
 export class CandidateService {
   private readonly logger = new Logger(CandidateService.name);
+  private readonly pipelineId: number;
 
   constructor(
     private readonly db: SupabaseService,
     private readonly KommoService: KommoService,
-  ) {}
+    configService: ConfigService<EnvConfig, true>,
+  ) {
+    this.pipelineId = configService.get('kommo.pipelineId', { infer: true });
+  }
+
+  // Runs every day at 7 AM and 1 PM (UTC-3)
+  @Cron('0 0 7,13 * * *', {
+    name: 'sync-candidates',
+    timeZone: 'America/Sao_Paulo',
+  })
+  async handleSyncCron(): Promise<void> {
+    try {
+      this.logger.log('Cron started -- Syncing candidates...');
+      const result = await this.sync(this.pipelineId);
+      this.logger.log(`Sync completed -- ${result.total} candidates synced`);
+    } catch (error) {
+      this.logger.error('Sync failed', (error as Error).stack);
+    }
+  }
+
   async sync(pipelineId: number): Promise<SyncResponse> {
     const startedAt = Date.now();
 
@@ -44,7 +69,7 @@ export class CandidateService {
         .update({
           total,
           status: 'success',
-          duration_ms: Date.now() - startedAt,
+          finished_at: new Date().toISOString(),
         })
         .eq('id', log.id);
 
@@ -57,7 +82,7 @@ export class CandidateService {
       };
     } catch (err) {
       const message = (err as Error).message;
-      this.logger.error(`Sync falhou: ${message}`);
+      this.logger.error(`Sync failed: ${message}`);
 
       await this.db.client
         .from('sync_logs')
@@ -76,6 +101,42 @@ export class CandidateService {
         durationMs: Date.now() - startedAt,
       };
     }
+  }
+
+  async findAll(): Promise<CandidateResult[]> {
+    const { data: candidates, error } = await this.db.client
+      .from('candidates')
+      .select(
+        `
+         lead_id,
+         name,
+         status_id,
+         pipeline_id,
+         contact_ids,
+         candidate_files (
+           file_uuid,
+           name,
+           extension,
+           download_url
+         )
+       `,
+      )
+      .order('name');
+
+    if (error) throw error;
+    return (candidates ?? []).map((c) => ({
+      leadId: c.lead_id,
+      name: c.name,
+      statusId: c.status_id,
+      pipelineId: c.pipeline_id,
+      contactIds: c.contact_ids,
+      files: (c.candidate_files ?? []).map((f: any) => ({
+        uuid: f.file_uuid,
+        name: f.name,
+        extension: f.extension,
+        downloadUrl: f.download_url,
+      })),
+    }));
   }
 
   private async persistBatch(batch: CandidateResult[]): Promise<void> {
