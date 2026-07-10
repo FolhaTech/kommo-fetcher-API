@@ -3,14 +3,13 @@ import {
   Controller,
   Get,
   Param,
-  Post,
   Query,
   Res,
   StreamableFile,
 } from '@nestjs/common';
 import { KommoService } from './kommo.service';
 import type { Response } from 'express';
-import { CandidateResult, KommoFile, KommoLeadWithFiles } from './kommo.types';
+import { KommoFile, KommoLeadWithFiles } from './kommo.types';
 
 @Controller('kommo')
 export class KommoController {
@@ -132,19 +131,19 @@ export class KommoController {
     return { extensions, batches };
   }
 
-  @Post('candidates/sync')
-  async syncCandidates(): Promise<{
-    total: number;
-    candidates: CandidateResult[];
-  }> {
-    const candidates: CandidateResult[] = [];
-    for await (const batch of this.kommoService.getCandidatesWithCvsPaginated(
-      13538803,
-    )) {
-      candidates.push(...batch);
-    }
-    return { total: candidates.length, candidates };
-  }
+  // @Post('candidates/sync')
+  // async syncCandidates(): Promise<{
+  //   total: number;
+  //   candidates: CandidateResult[];
+  // }> {
+  //   const candidates: CandidateResult[] = [];
+  //   for await (const batch of this.kommoService.getCandidatesWithCvsPaginated(
+  //     13538803,
+  //   )) {
+  //     candidates.push(...batch);
+  //   }
+  //   return { total: candidates.length, candidates };
+  // }
 
   @Get('files/:uuid/download')
   async downloadByUuid(

@@ -3,6 +3,7 @@ export interface EnvConfig {
     baseUrl: string;
     accessToken: string;
     driveUrl: string;
+    pipelineId: number;
   };
   db: {
     baseUrl: string;
@@ -24,6 +25,7 @@ export function loadEnvConfig(): EnvConfig {
     'DB_CONNECTION',
     'DB_KEY',
     'JWT_SECRET',
+    'KOMMO_PIPELINE_ID',
   ];
 
   const missingVars = requiredVars.filter((v) => !process.env[v]);
@@ -38,6 +40,7 @@ export function loadEnvConfig(): EnvConfig {
       baseUrl: process.env.KOMMO_BASE_URL ?? 'https://genterrh.kommo.com',
       accessToken: process.env.KOMMO_ACCESS_TOKEN,
       driveUrl: process.env.KOMMO_DRIVE_URL ?? 'https://drive-c.kommo.com',
+      pipelineId: parseInt(process.env.KOMMO_PIPELINE_ID ?? '13538803', 10),
     },
     app: {
       port: parseInt(process.env.PORT ?? '3000', 10),

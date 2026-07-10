@@ -1,5 +1,7 @@
 import { Injectable } from '@nestjs/common';
-import { PublicUser, User } from '../types/user.type';
+import { SupabaseService } from '../../db/supabase.service';
+import { User } from '../types/user.type';
+import { PublicUser } from '../types/user.type';
 import { Role } from '../../auth/types/role.enum';
 import * as bcrypt from 'bcrypt';
 
@@ -7,7 +9,7 @@ const BCRYPT_ROUNDS = 10;
 
 @Injectable()
 export class UserService {
-  private readonly users: User[] = [];
+  constructor(private readonly supabase: SupabaseService) {}
 
   async create(
     email: string,
@@ -15,45 +17,75 @@ export class UserService {
     password: string,
     roles: Role[] = [Role.USER],
   ): Promise<PublicUser> {
-    const exists = this.users.find((user) => user.email === email);
-    if (exists) {
+    const { data: existing } = await this.supabase.client
+      .from('users')
+      .select('id')
+      .eq('email', email)
+      .maybeSingle();
+
+    if (existing) {
       throw new Error('User already exists');
     }
-    const passwordHash = await bcrypt.hash(password, BCRYPT_ROUNDS);
-    const now = new Date();
-    const user: User = {
-      id: crypto.randomUUID(),
-      name,
-      email,
-      passwordHash,
-      roles,
-      active: true,
-      createdAt: now,
-      updatedAt: now,
-    };
 
-    this.users.push(user);
-    return this.toPublic(user);
+    const passwordHash = await bcrypt.hash(password, BCRYPT_ROUNDS);
+
+    const { data: user, error } = await this.supabase.client
+      .from('users')
+      .insert({
+        name,
+        email,
+        password_hash: passwordHash,
+        roles,
+        active: true,
+      })
+      .select('*')
+      .single();
+
+    if (error) throw error;
+    return this.toPublic(this.mapRow(user));
   }
 
   async findByEmail(email: string): Promise<User | undefined> {
-    return this.users.find((user) => user.email === email);
+    const { data: user } = await this.supabase.client
+      .from('users')
+      .select('*')
+      .eq('email', email)
+      .maybeSingle();
+
+    return user ? this.mapRow(user) : undefined;
   }
 
   async findById(id: string): Promise<PublicUser | undefined> {
-    const user = this.users.find((user) => user.id === id);
+    const { data: user } = await this.supabase.client
+      .from('users')
+      .select('*')
+      .eq('id', id)
+      .maybeSingle();
+
     if (!user) {
       throw new Error('User not found');
     }
-    return this.toPublic(user);
+    return this.toPublic(this.mapRow(user));
   }
 
   async verifyPassword(plain: string, hash: string): Promise<boolean> {
     return bcrypt.compare(plain, hash);
   }
 
+  private mapRow(row: Record<string, unknown>): User {
+    return {
+      id: row.id as string,
+      name: row.name as string,
+      email: row.email as string,
+      passwordHash: row.password_hash as string,
+      roles: row.roles as Role[],
+      active: row.active as boolean,
+      createdAt: new Date(row.created_at as string),
+      updatedAt: new Date(row.updated_at as string),
+    };
+  }
+
   private toPublic(user: User): PublicUser {
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { passwordHash, ...rest } = user;
     return rest;
   }

@@ -21,6 +21,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     });
   }
 
+  // eslint-disable-next-line @typescript-eslint/require-await
   async validate(payload: JwtPayload): Promise<UserAuthenticationType> {
     if (!payload.sub || !payload.email) {
       throw new Error('Invalid JWT payload');

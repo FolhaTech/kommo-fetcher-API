@@ -1,11 +1,11 @@
 import { Module } from '@nestjs/common';
-import { AppController } from './app.controller';
-import { AppService } from './app.service';
 import { ConfigModule } from '@nestjs/config';
 import { KommoModule } from './kommo/kommo.module';
-import { UserModule } from './users/services/user.module';
+import { UserModule } from './users/user.module';
 import { AuthModule } from './auth/auth/auth.module';
 import { loadEnvConfig } from './config/env.config';
+import { SupabaseModule } from './db/supabase.module';
+import { CandidatesModule } from './candidates/candidates.module';
 
 @Module({
   imports: [
@@ -13,11 +13,11 @@ import { loadEnvConfig } from './config/env.config';
       isGlobal: true,
       load: [loadEnvConfig],
     }),
+    SupabaseModule,
     KommoModule,
     UserModule,
     AuthModule,
+    CandidatesModule,
   ],
-  controllers: [AppController],
-  providers: [AppService],
 })
 export class AppModule {}

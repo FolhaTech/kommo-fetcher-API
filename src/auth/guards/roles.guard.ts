@@ -26,7 +26,7 @@ export class RolesGuard implements CanActivate {
     const request = context.switchToHttp().getRequest<Request>();
     const user = request.user as UserAuthenticationType;
     if (!user) {
-      throw new ForbiddenException('User not found');
+      throw new ForbiddenException('UserEntities not found');
     }
     return requiredRoles.some((role) => user.roles?.includes(role));
   }

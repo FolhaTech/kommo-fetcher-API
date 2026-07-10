@@ -9,8 +9,8 @@ import { EnvConfig } from '../../config/env.config';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { JwtModule } from '@nestjs/jwt';
 import { PassportModule } from '@nestjs/passport';
-import { UserModule } from '../../users/services/user.module';
 import type { StringValue } from 'ms';
+import { UserModule } from '../../users/user.module';
 
 @Module({
   imports: [
