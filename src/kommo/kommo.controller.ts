@@ -178,4 +178,34 @@ export class KommoController {
 
     return new StreamableFile(buffer);
   }
+
+  @Get('files/:uuid/preview')
+  async previewByUuid(
+    @Param('uuid') uuid: string,
+    @Res({ passthrough: true }) res: Response,
+  ): Promise<StreamableFile> {
+    if (!uuid) {
+      throw new BadRequestException('uuid is required');
+    }
+
+    const { buffer, name, extension } =
+      await this.kommoService.downloadFileByUuid(uuid);
+
+    const mimeTypes: Record<string, string> = {
+      pdf: 'application/pdf',
+      doc: 'application/msword',
+      docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      jpg: 'image/jpeg',
+      jpeg: 'image/jpeg',
+      png: 'image/png',
+    };
+
+    const ext = (extension ?? 'pdf').toLowerCase();
+    const contentType = mimeTypes[ext] ?? 'application/octet-stream';
+
+    res.setHeader('Content-Type', contentType);
+    res.setHeader('Content-Disposition', `inline; filename="${name}.${ext}"`);
+
+    return new StreamableFile(buffer);
+  }
 }
