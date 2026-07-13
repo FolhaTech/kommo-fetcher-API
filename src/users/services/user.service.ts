@@ -17,11 +17,14 @@ export class UserService {
     password: string,
     roles: Role[] = [Role.USER],
   ): Promise<PublicUser> {
-    const { data: existing } = await this.supabase.client
+    const { data: existing } = (await this.supabase.client
       .from('users')
       .select('id')
       .eq('email', email)
-      .maybeSingle();
+      .maybeSingle()) as unknown as {
+      data: { id: string } | null;
+      error: unknown;
+    };
 
     if (existing) {
       throw new Error('User already exists');
@@ -29,7 +32,7 @@ export class UserService {
 
     const passwordHash = await bcrypt.hash(password, BCRYPT_ROUNDS);
 
-    const { data: user, error } = await this.supabase.client
+    const { data: user, error } = (await this.supabase.client
       .from('users')
       .insert({
         name,
@@ -39,28 +42,37 @@ export class UserService {
         active: true,
       })
       .select('*')
-      .single();
+      .single()) as unknown as {
+      data: Record<string, unknown> | null;
+      error: unknown;
+    };
 
     if (error) throw error;
     return this.toPublic(this.mapRow(user));
   }
 
   async findByEmail(email: string): Promise<User | undefined> {
-    const { data: user } = await this.supabase.client
+    const { data: user } = (await this.supabase.client
       .from('users')
       .select('*')
       .eq('email', email)
-      .maybeSingle();
+      .maybeSingle()) as unknown as {
+      data: Record<string, unknown> | null;
+      error: unknown;
+    };
 
     return user ? this.mapRow(user) : undefined;
   }
 
   async findById(id: string): Promise<PublicUser | undefined> {
-    const { data: user } = await this.supabase.client
+    const { data: user } = (await this.supabase.client
       .from('users')
       .select('*')
       .eq('id', id)
-      .maybeSingle();
+      .maybeSingle()) as unknown as {
+      data: Record<string, unknown> | null;
+      error: unknown;
+    };
 
     if (!user) {
       throw new Error('User not found');
@@ -86,7 +98,7 @@ export class UserService {
   }
 
   private toPublic(user: User): PublicUser {
-    const { passwordHash, ...rest } = user;
+    const { passwordHash: _, ...rest } = user;
     return rest;
   }
 }
