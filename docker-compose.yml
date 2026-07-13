@@ -1,0 +1,27 @@
+version: '3.8'
+
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: kommo-fetcher-api
+    ports:
+      - '3000:3000'
+    env_file:
+      - .env
+    healthcheck:
+      test: ['CMD', 'node', '']
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    restart: always
+
+networks:
+  gateway:
+    driver: bridge
+
+volumes:
+  kommo-fetcher-api:
+    driver: local

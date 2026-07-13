@@ -1,0 +1,26 @@
+# Local Dependencies and Builds
+node_modules
+dist
+coverage
+
+# Local Files
+.env
+.env.*
+!.env.example
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Git and Editor
+.git
+.gitignore
+.github
+.vscode
+.idea
+*.md
+eslint.config.mjs
+.prettierrc
+tsconfig*.json
+nest-cli.json
